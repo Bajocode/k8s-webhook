@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ .Release.Name }}-github-webhook-configmap"
+data:
+  github-webhook.yaml: |-
+    ---
+    - id: {{ .Values.webhook.github.endpoint }}
+      execute-command: /emptydir-volume/github-webhook.sh
+      command-working-directory: /emptydir-volume
+      pass-arguments-to-command:
+      - source: payload
+        name: head_commit.id
+      - source: payload
+        name: repository.clone_url
+      - source: payload
+        name: repository.ssh_url
+      trigger-rule:
+        and:
+        - match:
+            type: payload-hash-sha1
+            secret: "{{ .Values.webhook.github.secret }}"
+            parameter:
+              source: header
+              name: X-Hub-Signature
+        - match:
+            type: value
+            value: "refs/heads/{{ .Values.webhook.github.branch }}"
+            parameter:
+              source: payload
+              name: ref

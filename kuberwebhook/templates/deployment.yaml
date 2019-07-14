@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kuberwebhook.fullname" . }}
+  labels:
+{{ include "kuberwebhook.labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "kuberwebhook.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "kuberwebhook.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args:
+        - "-verbose"
+        - "-hooks=/emptydir-volume/github-webhook.yaml"
+        - "-hotreload"
+        ports:
+        - name: http
+          containerPort: 9000
+          protocol: TCP
+        readinessProbe:
+          tcpSocket:
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: http
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+        volumeMounts:
+        - name: emptydir-volume
+          mountPath: /emptydir-volume
+        - name: webhook-configmap
+          mountPath: /emptydir-volume/github-webhook.yaml
+          subPath: github-webhook.yaml
+        - name: pipeline-configmap
+          mountPath: /emptydir-volume/pipeline-job.yaml
+          subPath: pipeline-job.yaml
+      initContainers:
+      - name: generate-script
+        image: busybox:latest
+        command: ["sh", "-c"]
+        args: ['echo "$GITHUB_PUSH_SCRIPT" | sed -n "1!p" > /emptydir-volume/github-webhook.sh && chmod +x /emptydir-volume/github-webhook.sh']
+        env:
+        - name: GITHUB_PUSH_SCRIPT
+          value: |-
+          {{ .Values.webhook.github.script | nindent 12 }}
+        volumeMounts:
+        - name: emptydir-volume
+          mountPath: /emptydir-volume
+      volumes:
+      - name: emptydir-volume
+        emptyDir: {}
+      - name: webhook-configmap
+        configMap:
+          name: "{{ .Release.Name }}-github-webhook-configmap"
+      - name: pipeline-configmap
+        configMap:
+          name: "{{ .Release.Name }}-pipeline-configmap"
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

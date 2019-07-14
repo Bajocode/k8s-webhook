@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-pipeline-configmap
+data:
+  pipeline-job.yaml: |
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: pipeline-job
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          initContainers:
+          - name: clone
+            image: alpine/git
+            args:
+            - clone
+            - {{ .Values.pipelineJob.clone.cloningRepositoryUrl }}
+            - /makisu-context
+            volumeMounts:
+            - name: build-context-volume
+              mountPath: /makisu-context
+            - name: ssh-secret-volume
+              mountPath: /root/.ssh
+          - name: build
+            image: "{{ .Values.pipelineJob.build.buildToolImage.repository }}:{{ .Values.pipelineJob.build.buildToolImage.tag }}"
+            imagePullPolicy: {{ .Values.pipelineJob.build.buildToolImage.pullPolicy }}
+            args:
+            - "build"
+            - "--push={{ .Values.pipelineJob.build.targetImage.host }}"
+            - "--modifyfs=true"
+            - "-t={{ .Values.pipelineJob.build.targetImage.repository }}:{{ .Values.pipelineJob.build.targetImage.tag }}"
+            - "--registry-config=/registry-config/registry.yaml"
+            - "/makisu-context"
+            volumeMounts:
+            - name: build-context-volume
+              mountPath: /makisu-context
+            - name: registry-secret-volume
+              mountPath: /registry-config
+          - name: deploy
+            image: lachlanevenson/k8s-helm:v2.14.1
+            command: ["helm"]
+            args:
+            - "upgrade"
+            - "--install"
+            - "{{ .Values.pipelineJob.deploy.helmChart.name }}"
+            - "/makisu-context/{{ .Values.pipelineJob.deploy.helmChart.path }}/{{ .Values.pipelineJob.deploy.helmChart.name }}"
+            - "--namespace={{ .Values.pipelineJob.deploy.helmChart.namespace }}"
+            - "--set=image.tag={{ .Values.pipelineJob.build.targetImage.tag }}"
+            volumeMounts:
+            - name: build-context-volume
+              mountPath: /makisu-context
+          containers:
+          - name: complete
+            image: busybox
+            command: ["sh", "-c", "echo completed"]
+          volumes:
+          - name: build-context-volume
+            emptyDir: {}
+          - name: registry-secret-volume
+            secret:
+              secretName: {{ .Values.pipelineJob.build.buildToolImage.makisuSecret }}
+          - name: ssh-secret-volume
+            secret:
+              secretName: {{ .Values.pipelineJob.clone.sshSecret }}
