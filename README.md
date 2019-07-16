@@ -1,6 +1,11 @@
 # k8s-webhook
 
 ## Components
+* predefined git webhooks
+* custom webhooks and actions: https://github.com/adnanh/webhook
+
+## Be aware of
+* RBAC permission to pull, push
 
 ### Dockerfile
 ```Dockerfile
@@ -32,13 +37,21 @@ EXPOSE      9000/tcp
 ENTRYPOINT  ["./webhook"]
 ```
 
-## Provided Git Webhooks
+## Out of the box
+
+### Git Webhooks
 * github
   * webhook secret
+* gitlab
+  *  
 
-## Provided pipeline
-* makisu
-  * 
+### Pipeline
+* clone with alpine/git: https://hub.docker.com/r/alpine/git/
+* build with Makisu 🍣: https://github.com/uber/makisu
+  * or kaniko, or buildkit
+* deploy with Helm: https://helm.sh/
+
+### Or Tekton pipelines
 
 ## Custom Webhooks
 * webhook yaml configmap
