@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ .Release.Name }}-git-webhook-configmap"
+data:
+  git-webhook.yaml: |-
+    ---
+    # Github
+    - id: {{ .Values.webhook.github.endpoint }}
+      command-working-directory: /emptydir-volume
+      {{- if .Values.webhook.github.isScriptInline }}
+      execute-command: bash
+      {{- else }}
+      execute-command: "{{ .Values.webhook.scriptsPath }}/github-webhook.sh"
+      {{- end }}
+      pass-arguments-to-command:
+      {{- if .Values.webhook.github.isScriptInline }}
+      - source: string
+        name: "-c"
+      - source: string
+        name: |-
+        {{ .Values.webhook.github.commandArg | nindent 10 }}
+      {{- end }}
+      - source: header
+        name: X-GitHub-Event
+      - source: payload
+        name: head_commit.id
+      - source: payload
+        name: repository.clone_url
+      - source: payload
+        name: repository.ssh_url
+      trigger-rule:
+        and:
+        - match:
+            type: payload-hash-sha1
+            secret: "{{ .Values.webhook.github.secret }}"
+            parameter:
+              source: header
+              name: X-Hub-Signature
+        - match:
+            type: value
+            value: "refs/heads/{{ .Values.webhook.github.branch }}"
+            parameter:
+              source: payload
+              name: ref
+    # Gitlab
+    - id: {{ .Values.webhook.gitlab.endpoint }}
+      command-working-directory: /emptydir-volume
+      {{- if .Values.webhook.gitlab.isScriptInline }}
+      execute-command: bash
+      {{- else }}
+      execute-command: "{{ .Values.webhook.scriptsPath }}/gitlab-webhook.sh"
+      {{- end }}
+      pass-arguments-to-command:
+      {{- if .Values.webhook.gitlab.isScriptInline }}
+      - source: string
+        name: "-c"
+      - source: string
+        name: |-
+        {{ .Values.webhook.gitlab.commandArg | nindent 10 }}
+      {{- end }}
+      - source: header
+        name: X-Gitlab-Event
+      - source: payload
+        name: checkout_sha
+      - source: payload
+        name: repository.git_http_url
+      - source: payload
+        name: repository.git_ssh_url
+      trigger-rule:
+        and:
+        - match:
+            type: value
+            value: "{{ .Values.webhook.gitlab.secret }}"
+            parameter:
+              source: header
+              name: X-Gitlab-Token
+        - match:
+            type: value
+            value: "refs/heads/{{ .Values.webhook.gitlab.branch }}"
+            parameter:
+              source: payload
+              name: ref

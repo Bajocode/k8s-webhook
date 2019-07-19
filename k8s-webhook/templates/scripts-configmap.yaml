@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ .Release.Name }}-scripts-configmap"
+data:
+  github-webhook.sh: |-
+    #!/bin/bash
+    export EVENT_TYPE=$1 COMMIT_HASH=$2 HTTP_URL=$3 SSH_URL=$4
+
+    sed -e "s|<COMMIT_HASH_FROM_WEBHOOK_PAYLOAD>|$COMMIT_HASH|g" \
+      -e "s|<URL_FROM_WEBHOOK_PAYLOAD>|$HTTP_URL|g" \
+      /emptydir-volume/pipeline-job.yaml > /emptydir-volume/pipeline-job-replaced.yaml
+
+    if [ $EVENT_TYPE = "push" ]; then
+      kubectl --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) \
+        --server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT \
+        --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+        delete -f /emptydir-volume/pipeline-job-replaced.yaml
+      kubectl --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) \
+        --server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT \
+        --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+        create -f /emptydir-volume/pipeline-job-replaced.yaml
+    fi
+
+  gitlab-webhook.sh: |-
+    #!/bin/bash
+    export EVENT_TYPE=$1 COMMIT_HASH=$2 HTTP_URL=$3 SSH_URL=$4
+    kubectl version && helm version
+    echo "$EVENT_TYPE, $COMMIT_HASH, $HTTP_URL, $SSH_URL"

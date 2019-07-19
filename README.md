@@ -1,4 +1,19 @@
 # k8s-webhook
+A helm chart based webhook listener and executor with a full-blown (all native kubernetes) CI CD setup for Github and Gitlab.
+
+## Table of Contents
+* link to inline example
+* link to kaniko example
+
+## Example
+* gifs
+
+## Usage
+* helm repo add fb https://bajocode.github.io/helmcharts/
+
+### Configuring the predefined CI CD hooks
+
+### Adding an entirely new webhook
 
 ## Components
 * predefined git webhooks

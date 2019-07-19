@@ -16,19 +16,20 @@ service:
   port: 80
 
 ingress:
-  enabled: false
-  # annotations:
-  #   kubernetes.io/ingress.class: nginx
-  #   certmanager.k8s.io/cluster-issuer: "letsencrypt-prod"
-  #   certmanager.k8s.io/acme-challenge-type: http01
-  # hosts:
-  # - host: some.domain.io
-  #   paths:
-  #   - /hooks/github-webhook
-  # tls:
-  # - secretName: tls-secret
-  #   hosts:
-  #   - some.domain.io
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    certmanager.k8s.io/cluster-issuer: "letsencrypt-prod"
+    certmanager.k8s.io/acme-challenge-type: http01
+  hosts:
+  - host: devops.fabijanbajo.com
+    paths:
+    - /hooks/github-webhook
+    - /hooks/gitlab-webhook
+  tls:
+  - secretName: fabijanbajo-tls-secret
+    hosts:
+    - devops.fabijanbajo.com
 
 resources:
   limits:
@@ -42,19 +43,34 @@ tolerations: []
 affinity: {}
 
 webhook:
+  customVolumeMounts: []
+  # webhook configuration: https://github.com/adnanh/webhook
+  # - name: mywebhook-configmap
+  #   mountPath: /emptydir-volume/mywebhook.yaml
+  #   subPath: mywebhook.yaml
+  scriptsPath: /emptydir-volume/scripts
   github:
     endpoint: github-webhook  
-    secret: ""
+    secret: "}VY*IsCn/OX:7R@"
     branch: master
-    script: |-
+    isScriptInline: false
+    commandArg: |-
       #!/bin/bash
-      kubectl version
-      helm version
-      # Example @ https://github.com/Bajocode/k8s-webhook
+      export GITHUB_EVENT=$0 COMMIT_HASH=$1 REPO_HTTPS=$1 REPO_SSH=$2
+      kubectl version && helm version
+  gitlab:
+    endpoint: gitlab-webhook  
+    secret: "}VY*IsCn/OX:7R@"
+    branch: master
+    isScriptInline: true
+    commandArg: |-
+      export EVENT_TYPE=$0 COMMIT_HASH=$1 HTTP_URL=$2 SSH_URL=$3
+      kubectl version && helm version
 
 pipelineJob:
+  enabled: true
   clone:
-    cloningRepositoryUrl: <REPOURL_REPLACEME>
+    cloningRepositoryUrl: <URL_FROM_WEBHOOK_PAYLOAD>
     sshSecret: ssh-secret
   build:
     buildToolImage:
@@ -65,10 +81,9 @@ pipelineJob:
     targetImage:
       host: gcr.io
       repository: fabijanbajo/fabijanbajo
-      tag: <TARGETTAG_REPLACEME>
+      tag: <COMMIT_HASH_FROM_WEBHOOK_PAYLOAD>
   deploy:
     helmChart:
-      name: chartname
-      namespace:
-      # Relative path from fetched git repo or hosted chart
-      path:
+      name: fabijanbajo
+      namespace: fabijanbajo
+      path: kubernetes

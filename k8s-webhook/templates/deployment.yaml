@@ -26,7 +26,7 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
         - "-verbose"
-        - "-hooks=/emptydir-volume/github-webhook.yaml"
+        - "-hooks=/emptydir-volume/git-webhook.yaml"
         - "-hotreload"
         ports:
         - name: http
@@ -46,29 +46,36 @@ spec:
         - name: emptydir-volume
           mountPath: /emptydir-volume
         - name: webhook-configmap
-          mountPath: /emptydir-volume/github-webhook.yaml
-          subPath: github-webhook.yaml
+          mountPath: /emptydir-volume/git-webhook.yaml
+          subPath: git-webhook.yaml
         - name: pipeline-configmap
           mountPath: /emptydir-volume/pipeline-job.yaml
           subPath: pipeline-job.yaml
+      {{- with .Values.webhook.customVolumeMounts }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       initContainers:
-      - name: generate-script
+      - name: initialize-scripts
         image: busybox:latest
-        command: ["sh", "-c"]
-        args: ['echo "$GITHUB_PUSH_SCRIPT" | sed -n "1!p" > /emptydir-volume/github-webhook.sh && chmod +x /emptydir-volume/github-webhook.sh']
         env:
-        - name: GITHUB_PUSH_SCRIPT
-          value: |-
-          {{ .Values.webhook.github.script | nindent 12 }}
+        - name: SCRIPTS_PATH
+          value: {{ .Values.webhook.scriptsPath }}
+        command: ["sh", "-c"]
+        args: ["cp -rf /emptydir-volume/scripts-temp $SCRIPTS_PATH && chmod +x $SCRIPTS_PATH/*"]
         volumeMounts:
         - name: emptydir-volume
           mountPath: /emptydir-volume
+        - name: scripts-configmap
+          mountPath: /emptydir-volume/scripts-temp
       volumes:
       - name: emptydir-volume
         emptyDir: {}
       - name: webhook-configmap
         configMap:
-          name: "{{ .Release.Name }}-github-webhook-configmap"
+          name: "{{ .Release.Name }}-git-webhook-configmap"
+      - name: scripts-configmap
+        configMap:
+          name: "{{ .Release.Name }}-scripts-configmap"
       - name: pipeline-configmap
         configMap:
           name: "{{ .Release.Name }}-pipeline-configmap"
