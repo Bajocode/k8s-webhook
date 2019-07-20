@@ -23,8 +23,8 @@ Though preconfigured for CI/CD, custom webhook configurations can be integrated 
 ## Installing the Chart
 
 ### Required before installing
-- [I want to create and deploy my own custom webhook](https://github.com/Bajocode/k8s-webhook/blob/master/docs/CICD_PIPELINE_TUTORIAL.md)
-- [I want to make use of the integrated ci/cd pipeline](https://github.com/Bajocode/k8s-webhook/blob/master/docs/CUSTOM_WEBHOOK_TUTORIAL.md)
+- [I want to create and deploy my own custom webhook](https://github.com/Bajocode/k8s-webhook/blob/master/docs/CUSTOM_WEBHOOK_TUTORIAL.md)
+- [I want to make use of the integrated ci/cd pipeline](https://github.com/Bajocode/k8s-webhook/blob/master/docs/CICD_PIPELINE_TUTORIAL.md)
 
 >Once configured; install the chart with the a release name `my-release`;
 
