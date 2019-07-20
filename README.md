@@ -2,6 +2,8 @@
 
 k8s-webhook is a Kubernetes webhook consumer, equipped and preconfigured to continuously integrate and deploy your Github and Gitlab projects.
 
+<img src="docs/k8s-webhook.png" alt="logo" width="150"/>
+
 ## TL;DR
 
 ```console
