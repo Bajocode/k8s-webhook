@@ -26,7 +26,7 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
         - "-verbose"
-        - "-hooks=/emptydir-volume/git-webhook.yaml"
+        - "-hooks={{ .Values.webhookFilePath }}"
         - "-hotreload"
         ports:
         - name: http
@@ -51,7 +51,7 @@ spec:
         - name: pipeline-configmap
           mountPath: /emptydir-volume/pipeline-job.yaml
           subPath: pipeline-job.yaml
-      {{- with .Values.webhook.customVolumeMounts }}
+      {{- with .Values.customVolumeMounts }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
@@ -59,7 +59,7 @@ spec:
         image: busybox:latest
         env:
         - name: SCRIPTS_PATH
-          value: {{ .Values.webhook.scriptsPath }}
+          value: {{ .Values.scriptsPath }}
         command: ["sh", "-c"]
         args: ["cp -rf /emptydir-volume/scripts-temp $SCRIPTS_PATH && chmod +x $SCRIPTS_PATH/*"]
         volumeMounts:

@@ -11,7 +11,7 @@ data:
       {{- if .Values.webhook.github.isScriptInline }}
       execute-command: bash
       {{- else }}
-      execute-command: "{{ .Values.webhook.scriptsPath }}/github-webhook.sh"
+      execute-command: "{{ .Values.scriptsPath }}/github-webhook.sh"
       {{- end }}
       pass-arguments-to-command:
       {{- if .Values.webhook.github.isScriptInline }}
@@ -49,7 +49,7 @@ data:
       {{- if .Values.webhook.gitlab.isScriptInline }}
       execute-command: bash
       {{- else }}
-      execute-command: "{{ .Values.webhook.scriptsPath }}/gitlab-webhook.sh"
+      execute-command: "{{ .Values.scriptsPath }}/gitlab-webhook.sh"
       {{- end }}
       pass-arguments-to-command:
       {{- if .Values.webhook.gitlab.isScriptInline }}
