@@ -1,0 +1,80 @@
+---
+# Source: k8s-webhook/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-name-k8s-webhook
+  labels:
+    app.kubernetes.io/name: k8s-webhook
+    helm.sh/chart: k8s-webhook-0.1.0
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Tiller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: k8s-webhook
+      app.kubernetes.io/instance: release-name
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: k8s-webhook
+        app.kubernetes.io/instance: release-name
+    spec:
+      containers:
+      - name: k8s-webhook
+        image: "gcr.io/fabijanbajo/k8s-webhook:0.1.0"
+        imagePullPolicy: IfNotPresent
+        args:
+        - "-verbose"
+        - "-hooks=/emptydir-volume/git-webhook.yaml"
+        - "-hotreload"
+        ports:
+        - name: http
+          containerPort: 9000
+          protocol: TCP
+        readinessProbe:
+          tcpSocket:
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: http
+        resources:
+            {}
+            
+        volumeMounts:
+        - name: emptydir-volume
+          mountPath: /emptydir-volume
+        - name: webhook-configmap
+          mountPath: /emptydir-volume/git-webhook.yaml
+          subPath: git-webhook.yaml
+        - name: pipeline-configmap
+          mountPath: /emptydir-volume/pipeline-job.yaml
+          subPath: pipeline-job.yaml
+      initContainers:
+      - name: initialize-scripts
+        image: busybox:latest
+        env:
+        - name: SCRIPTS_PATH
+          value: /emptydir-volume/scripts
+        command: ["sh", "-c"]
+        args: ["cp -rf /emptydir-volume/scripts-temp $SCRIPTS_PATH && chmod +x $SCRIPTS_PATH/*"]
+        volumeMounts:
+        - name: emptydir-volume
+          mountPath: /emptydir-volume
+        - name: scripts-configmap
+          mountPath: /emptydir-volume/scripts-temp
+      volumes:
+      - name: emptydir-volume
+        emptyDir: {}
+      - name: webhook-configmap
+        configMap:
+          name: "release-name-git-webhook-configmap"
+      - name: scripts-configmap
+        configMap:
+          name: "release-name-scripts-configmap"
+      - name: pipeline-configmap
+        configMap:
+          name: "release-name-pipeline-configmap"

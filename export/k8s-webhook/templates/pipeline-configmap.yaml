@@ -1,0 +1,69 @@
+---
+# Source: k8s-webhook/templates/pipeline-configmap.yaml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: release-name-pipeline-configmap
+data:
+  pipeline-job.yaml: |
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: pipeline-job
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          initContainers:
+          - name: clone
+            image: alpine/git
+            args:
+            - clone
+            - <URL_FROM_WEBHOOK_PAYLOAD>
+            - /makisu-context
+            volumeMounts:
+            - name: build-context-volume
+              mountPath: /makisu-context
+            - name: ssh-secret-volume
+              mountPath: /root/.ssh
+          - name: build
+            image: "gcr.io/makisu-project/makisu:v0.1.11"
+            imagePullPolicy: Always
+            args:
+            - "build"
+            - "--push="
+            - "--modifyfs=true"
+            - "-t=:<COMMIT_HASH_FROM_WEBHOOK_PAYLOAD>"
+            - "--registry-config=/registry-config/registry.yaml"
+            - "/makisu-context"
+            volumeMounts:
+            - name: build-context-volume
+              mountPath: /makisu-context
+            - name: registry-secret-volume
+              mountPath: /registry-config
+          containers:
+          - name: deploy
+            image: lachlanevenson/k8s-helm:v2.14.1
+            command: ["helm"]
+            args:
+            - "upgrade"
+            - "--install"
+            - ""
+            - "/makisu-context//"
+            - "--namespace="
+            - "--set=image.tag=<COMMIT_HASH_FROM_WEBHOOK_PAYLOAD>"
+            - "--wait"
+            - "--timeout=600"
+            volumeMounts:
+            - name: build-context-volume
+              mountPath: /makisu-context
+          volumes:
+          - name: build-context-volume
+            emptyDir: {}
+          - name: registry-secret-volume
+            secret:
+              secretName: 
+          - name: ssh-secret-volume
+            secret:
+              secretName: 

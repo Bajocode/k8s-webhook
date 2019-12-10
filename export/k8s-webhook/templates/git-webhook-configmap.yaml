@@ -1,0 +1,63 @@
+---
+# Source: k8s-webhook/templates/git-webhook-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "release-name-git-webhook-configmap"
+data:
+  git-webhook.yaml: |-
+    ---
+    # Github
+    - id: github-webhook
+      command-working-directory: /emptydir-volume
+      execute-command: "/emptydir-volume/scripts/github-webhook.sh"
+      pass-arguments-to-command:
+      - source: header
+        name: X-GitHub-Event
+      - source: payload
+        name: head_commit.id
+      - source: payload
+        name: repository.clone_url
+      - source: payload
+        name: repository.ssh_url
+      trigger-rule:
+        and:
+        - match:
+            type: payload-hash-sha1
+            secret: ""
+            parameter:
+              source: header
+              name: X-Hub-Signature
+        - match:
+            type: value
+            value: "refs/heads/master"
+            parameter:
+              source: payload
+              name: ref
+    # Gitlab
+    - id: gitlab-webhook
+      command-working-directory: /emptydir-volume
+      execute-command: "/emptydir-volume/scripts/gitlab-webhook.sh"
+      pass-arguments-to-command:
+      - source: header
+        name: X-Gitlab-Event
+      - source: payload
+        name: checkout_sha
+      - source: payload
+        name: repository.git_http_url
+      - source: payload
+        name: repository.git_ssh_url
+      trigger-rule:
+        and:
+        - match:
+            type: value
+            value: ""
+            parameter:
+              source: header
+              name: X-Gitlab-Token
+        - match:
+            type: value
+            value: "refs/heads/master"
+            parameter:
+              source: payload
+              name: ref

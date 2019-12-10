@@ -1,0 +1,21 @@
+---
+# Source: k8s-webhook/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-name-k8s-webhook
+  labels:
+    app.kubernetes.io/name: k8s-webhook
+    helm.sh/chart: k8s-webhook-0.1.0
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Tiller
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: k8s-webhook
+    app.kubernetes.io/instance: release-name
